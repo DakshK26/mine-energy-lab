@@ -60,6 +60,8 @@ for i in range(10000):
         newGen.append( (e1, e2, e3) )
         
     solutions = newGen 
+    
+
         
         
     
