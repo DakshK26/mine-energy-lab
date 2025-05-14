@@ -16,7 +16,7 @@ from pymoo.decomposition.asf import ASF
 
 '''
 Using PyMoo library to solve a bi-objective optimization problem
-Followed PyMoo tutorial: https://pymoo.org/getting_started/part_2.html
+Implemented from: https://pymoo.org/getting_started/part_2.html
 '''
 
 # PyMoo requires each constraint to be <= 0
