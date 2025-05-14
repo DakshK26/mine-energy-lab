@@ -11,10 +11,12 @@ from pymoo.termination import get_termination
 from pymoo.optimize import minimize
 # For visualization
 import matplotlib.pyplot as plt
-
+# For decomp mcdm
+from pymoo.decomposition.asf import ASF
 
 '''
 Using PyMoo library to solve a bi-objective optimization problem
+Followed PyMoo tutorial: https://pymoo.org/getting_started/part_2.html
 '''
 
 # PyMoo requires each constraint to be <= 0
@@ -146,3 +148,74 @@ plt.scatter(
 )
 plt.title("Objective Space")
 plt.show()
+
+#
+# Multi-Criteria Decision Making
+#
+
+# Normalize the two objectives
+# Ideal point is the best possible on each objective (smallest)
+# Nadir point is worst value on each objective (largest)
+
+approx_ideal = F.min(axis=0) # Looks at each column and picks the smallest value [min f1, min f2]
+approx_nadir = F.max(axis=0) # Same but w/ max
+
+# Replot graph w nadir and ideal point
+plt.figure(figsize=(7, 5))
+
+# Plot all solutions in blue
+plt.scatter(F[:, 0], F[:, 1],
+            s=30, facecolors='none', edgecolors='blue')
+
+# Mark the ideal in red with a star
+plt.scatter(approx_ideal[0], approx_ideal[1],
+            facecolors='none', edgecolors='red',
+            marker="*", s=100,
+            label="Ideal Point (Approx)")
+
+# Mark the nadir in black with a pentagon
+plt.scatter(approx_nadir[0], approx_nadir[1],
+            facecolors='none', edgecolors='black',
+            marker="p", s=100,
+            label="Nadir Point (Approx)")
+
+plt.title("Objective Space")
+plt.legend()
+plt.show()
+
+
+# Each objective gets normalized
+nF = (F - approx_ideal) / (approx_nadir - approx_ideal) 
+
+# Test new ranges
+fl = nF.min(axis=0)   # should be 0 or very close
+fu = nF.max(axis=0)   # should be 1 or very close
+
+print(f"Scale f1: [{fl[0]}, {fu[0]}]")
+print(f"Scale f2: [{fl[1]}, {fu[1]}]")
+
+# Replot with normalized scale
+plt.figure(figsize=(7, 5))
+plt.scatter(nF[:, 0], nF[:, 1],
+            s=30, facecolors='none', edgecolors='blue')
+plt.title("Normalized Objective Space")
+plt.show()
+
+#
+# Decomposition via ASF
+# A method to find the best solution based on weights
+# As in, if you think objective one is worth 20% and obj 2 is worth 80%
+# It'll find the right solution based on that
+#
+
+# Define weights
+weights = np.array([0.2, 0.8])
+
+# Get best solution
+decomp = ASF()
+# Decomp works with ASF(f,w) = max(i, (fi-zi*)/wi)) + small augmentation term
+i = decomp.do(nF, 1/weights).argmin()
+
+print("Best ASF index:", i)
+print("Objectives:", F[i])
+print("Chosen x1, x2: ", X[i])
