@@ -171,13 +171,13 @@ plt.scatter(F[:, 0], F[:, 1],
 plt.scatter(approx_ideal[0], approx_ideal[1],
             facecolors='none', edgecolors='red',
             marker="*", s=100,
-            label="Ideal Point (Approx)")
+            label="Ideal Point")
 
 # Mark the nadir in black with a pentagon
 plt.scatter(approx_nadir[0], approx_nadir[1],
             facecolors='none', edgecolors='black',
             marker="p", s=100,
-            label="Nadir Point (Approx)")
+            label="Nadir Point")
 
 plt.title("Objective Space")
 plt.legend()
