@@ -5,8 +5,11 @@ from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
 from pymoo.operators.sampling.rnd import FloatRandomSampling
-# For termination
+# For basic termination
 from pymoo.termination import get_termination
+# For robust termination
+from pymoo.termination.ftol import MultiObjectiveSpaceTermination
+from pymoo.termination.robust import RobustTermination
 # For optimization
 from pymoo.optimize import minimize
 # For visualization
@@ -14,9 +17,12 @@ import matplotlib.pyplot as plt
 # For decomp mcdm
 from pymoo.decomposition.asf import ASF
 
+
 '''
 Using PyMoo library to solve a bi-objective optimization problem
 Implemented from: https://pymoo.org/getting_started/part_2.html
+Look into how to model wind turbine (lit review)
+Differential equations must be solved before being plugged in to optimize
 '''
 
 # PyMoo requires each constraint to be <= 0
@@ -93,11 +99,19 @@ algorithm = NSGA2(
 # Define Termination Criterion
 #
 
-termination = get_termination("n_gen", 40) # Terminate after 40 generations
+# termination = get_termination("n_gen", 40) # Terminate after 40 generations
 # Small termination criteria since the problem is relatively simple
 
 # Can use a convergence analysis to see how much progress is made each generation
 # If termination criteria isn't defined, pymoo automatically terminates after progress stops being made
+
+
+# New termination Criteria
+# Checks every 5 generations if there's been 0.3% improvement in the last 20, terminate if not
+termination = RobustTermination(
+    MultiObjectiveSpaceTermination(tol=0.003, n_skip=5),
+    period=20
+)
 
 #
 # Optimize
@@ -209,7 +223,7 @@ plt.show()
 #
 
 # Define weights
-weights = np.array([0.2, 0.8])
+weights = np.array([0.5, 0.5])
 
 # Get best solution
 decomp = ASF()
