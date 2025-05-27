@@ -18,7 +18,7 @@ from pymoo.decomposition.asf import ASF
 # For ui
 import click as ui
 
-from mathematical_modelling import Wind_Turbine as wt
+import Wind_Turbine as wt
 
 # Get values, all base cases based on research on HAWT
 density_sea = ui.prompt("Sea level density: ", default=1.225, type=float) # ISA Standard Value

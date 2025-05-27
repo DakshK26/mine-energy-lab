@@ -1,0 +1,7 @@
+For EUREKA A 2024
+January:
+Mean wind speed: 12.726
+Standard Deviation: 7.117
+k: 
+c: 
+RMSE: 
