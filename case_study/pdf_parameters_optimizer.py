@@ -19,8 +19,9 @@ import scipy.integrate
 from scipy.integrate import quad
 # For Parralelization
 from multiprocessing.pool import ThreadPool
+import click as ui
 
-import file_loader as fl
+import pdf_helper as helper
 
 '''
 Following general layout from: https://www.nature.com/articles/s41598-025-90583-2#Sec2 to find k and c 
@@ -71,13 +72,14 @@ class PDF_Parameter_Problem(ElementwiseProblem):
 #
 # Parallelization
 #
-threads = 6
+threads = 10
 pool = ThreadPool(threads) # Creates a pool of worker threads
 runner = StarmapParallelization(pool.starmap) # pool.starmap takes a function and a list of argument tuples and runs them parralel
 # starmap parallelization takes the evaluate function and turns it into the input that pool.starmap expects
 
 # Get speeds
-speeds = fl.speedsAsArray()
+month = ui.prompt("Month: ")
+speeds = helper.speedsAsArray(month)
 counts, edges = np.histogram(speeds, bins='auto', density=True) # Density histogram so frequencies sum to 1. Counts is number of entries in each bin, edges are positions of bin boundaries
 
 
@@ -96,8 +98,11 @@ algorithm = DE(
     F=0.8
 )
 
+# Set number of generations
+n_gen = 2000
+
 # Simple termination after 200 gens
-termination = get_termination("n_gen", 200)
+termination = get_termination("n_gen", n_gen)
 
 # Generate the results
 res = minimize(
@@ -106,11 +111,15 @@ res = minimize(
     termination,
     seed = 1, # Fix a random seed (allows us to get same results running the code multiple times)
     save_history = False, # Store population at each generation
-    verbose = True # Print progress to the console each generation
+    verbose = False # Print progress to the console each generation
 )
 
 # Results
 best_k, best_c = res.X # Returs 2-D array of the decision-variable vectors for final set
 best_rmse = res.F[0]
 
-print(f"k = {best_k}, c = {best_c} , RMSE = {best_rmse}")
+print(f"k: {best_k}\nc: {best_c}\nRMSE: {best_rmse}")
+print(f"Mean wind speed: {np.mean(speeds)}")
+print(f"Standard Deviation: {np.std(speeds)}")
+print(f"Max Speed: {helper.v_max_solver(best_k, best_c)}")
+print(f"Generations Ran: {n_gen}")
