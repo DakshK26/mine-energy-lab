@@ -37,7 +37,7 @@ def RMSE(k, c, counts, edges) -> float:
     # Since CDF is integral of PDF, the exact value for integral of PDF can be found by CDF(i)-CDF(i) where i is bin edge positions
     num = cdf(edges[1:]) - cdf(edges[:-1])
     width = edges[1:] - edges[:-1] # This gives the width of each bin
-    pdf_avg = num / width # The pdf average will give value of f at each point of interest
+    pdf_avg = num / width # The pdf average will give amount of entries in each histogram entry
     
     # RMSE between your measured density and the exact average
     return np.sqrt(np.mean((counts - pdf_avg)**2))

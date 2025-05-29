@@ -3,7 +3,7 @@ import numpy as np
 import click as ui
 
 def speedsAsArray(month: str):
-    df = pd.read_csv(f"case_study/months_data/{month}.csv")
+    df = pd.read_csv(f"case_study/weibull_modelling/months_data/{month}.csv")
     speeds_kmh = df['Wind Spd (km/h)'].dropna().to_numpy() # Drop all empty entries and get wind speeds
     speeds_ms = speeds_kmh / 3.6
     return speeds_ms

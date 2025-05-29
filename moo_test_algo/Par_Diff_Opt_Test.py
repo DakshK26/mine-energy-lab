@@ -109,7 +109,7 @@ algorithm = NSGA2(
 # 
 # Termination
 #
-# Checks every 5 generations if there's been 2% improvement in the last 20, terminate if not
+# Checks every 5 generations if there's been 0.2% improvement in the last 20, terminate if not
 termination = RobustTermination(
     MultiObjectiveSpaceTermination(tol=0.02, n_skip=5),
     period=20
@@ -121,7 +121,7 @@ res = minimize(
     algorithm,
     termination,
     seed = 1, # Fix a random seed (allows us to get same results running the code multiple times)
-    save_history = True, # Store population at each generation
+    save_history = False, # Store population at each generation
     verbose = True # Print progress to the console each generation
 )
 
