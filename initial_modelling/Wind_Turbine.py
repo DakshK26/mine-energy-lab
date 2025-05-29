@@ -21,7 +21,7 @@ def weibull_pdf(k: float, c: float, v: np.ndarray) -> np.ndarray:
     return (k / c**k) * v**(k - 1) * np.exp(-(v / c)**k)
 
 
-# Max value of wiedbu
+# Max value of wiedbull CDF
 def weibull_cdf(k: float, c: float, v: np.ndarray) -> np.ndarray:
     """
     Cumulative distribution function of the Weibull distribution.
@@ -39,7 +39,7 @@ def weibull_cdf(k: float, c: float, v: np.ndarray) -> np.ndarray:
     v = np.asarray(v) # Convert to numpy array
     return 1 - np.exp(-(v / c)**k)
 
-# From: 
+# Ideal Hub Height to Radius Relation from Literature
 def calc_height(R: float) -> float:
     """
     Estimate hub height from rotor radius based on empirical relation.
@@ -130,8 +130,8 @@ def mean_turbine_power(
     C6: float = 21.0,
     x: float = 0.0,
     k: float = 2.0,
-    v_min: float = 0.0,
-    v_max: float = 30.0,
+    v_cut_in: float = 3.0,
+    v_cut_out: float = 25.0,
     n: int = 1000
 ) -> float:
     """

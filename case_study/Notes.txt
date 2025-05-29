@@ -107,3 +107,22 @@ Mean wind speed: 5.366976213750408
 Standard Deviation: 4.092650344416893
 Max Speed: 33.526234626150575
 Generations Ran: 2000
+
+For On-Shore NREL Wind Turbine:
+Bivariate polynomial coefficients for C_p(V, P_r):
+  a3 = 3.625317e-03
+  b3 = -2.774383e-05
+  a2 = -8.090100e-02
+  b2 = 5.059709e-04
+  a1 = 5.880855e-01
+  b1 = -3.009707e-03
+  a0 = -9.961359e-01
+  b0 = 5.691422e-03
+
+Resulting model:
+C_p(V, P_r) = (3.625e-03 + -2.774e-05*P_r)*V**3 + (-8.090e-02 + 5.060e-04*P_r)*V**2 + (5.881e-01 + -3.010e-03*P_r)*V + (-9.961e-01 + 5.691e-03*P_r)
+
+Overall RMSE: 0.0352
+RMSE for 4.0 MW: 0.0353
+RMSE for 5.5 MW: 0.0347
+RMSE for 7.0 MW: 0.0357
