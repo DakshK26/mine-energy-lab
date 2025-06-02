@@ -72,7 +72,7 @@ def power_output_mechanical(
     return P_mech
 
 
-def mean_turbine_power_piecewise(
+def mean_turbine_power(
     k: float,
     c: float,
     rho0: float,
