@@ -72,7 +72,7 @@ class PDF_Parameter_Problem(ElementwiseProblem):
 #
 # Parallelization
 #
-threads = 10
+threads = 8
 pool = ThreadPool(threads) # Creates a pool of worker threads
 runner = StarmapParallelization(pool.starmap) # pool.starmap takes a function and a list of argument tuples and runs them parralel
 # starmap parallelization takes the evaluate function and turns it into the input that pool.starmap expects
@@ -98,7 +98,7 @@ algorithm = DE(
     F=0.8
 )
 
-# Set number of generations
+# number generations ran
 n_gen = 2000
 
 # Simple termination after 200 gens
@@ -111,7 +111,7 @@ res = minimize(
     termination,
     seed = 1, # Fix a random seed (allows us to get same results running the code multiple times)
     save_history = False, # Store population at each generation
-    verbose = False # Print progress to the console each generation
+    verbose = True # Print progress to the console each generation
 )
 
 # Results
@@ -123,3 +123,42 @@ print(f"Mean wind speed: {np.mean(speeds)}")
 print(f"Standard Deviation: {np.std(speeds)}")
 print(f"Max Speed: {helper.v_max_solver(best_k, best_c)}")
 print(f"Generations Ran: {n_gen}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 8) Plot histogram + fitted Weibull PDF
+# ──────────────────────────────────────────────────────────────────────────────
+
+plt.figure(figsize=(8, 5))
+
+# (a) Plot the empirical histogram (density=True so area = 1)
+plt.hist(
+    speeds,
+    bins=edges,
+    density=True,
+    alpha=0.4,
+    color='skyblue',
+    edgecolor='gray',
+    label='Empirical histogram'
+)
+
+# (b) Compute the continuous Weibull PDF on a fine grid
+v_grid = np.linspace(edges[0], edges[-1], 200)
+weib_pdf = (best_k / best_c) * (v_grid / best_c) ** (best_k - 1) * np.exp(- (v_grid / best_c) ** best_k)
+
+# (c) Overlay the fitted Weibull curve
+plt.plot(
+    v_grid,
+    weib_pdf,
+    'r-',
+    linewidth=2,
+    label=f'Weibull PDF (k={best_k:.3f}, c={best_c:.3f})'
+)
+
+plt.xlabel("Wind speed (m/s)")
+plt.ylabel("Probability density")
+plt.title("Weibull fit vs. empirical histogram")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
