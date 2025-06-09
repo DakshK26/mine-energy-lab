@@ -25,9 +25,10 @@ import nrel_model_onshore as turbine
 
 '''
 Main function to optimize for AOE and Cost.
-Configured for rated power from 2.3MW to 7MW. From radius of: 56.5m -> 100m
+Configured for rated power from 2.3MW to 7MW. From radius of: 56.5m -> 100m. Hub Height from: 70 -> 200
 Cost function must be in W and Wh/yr
 Power function is in kw
+Cost of diesel comparison
 '''
 
 # Get rated power curve data 
@@ -57,22 +58,21 @@ class TurbineModel(ElementwiseProblem):
     # Constructor 
     def __init__(self, **kwargs):
         super().__init__( # Inherit from element wise problem class
-            n_var = 2, # Number of vars (R, P_r)
+            n_var = 3, # Number of vars (R, P_r, Hm)
             n_obj = 1, # Number of objs
             n_ieq_constr = 1, # Number of inequality constraints
             n_eq_constr = 0, # Number of equality constraints
-            xl=np.array([56.5, 2300]), # Lower bound for both (Let R be first var) P_R in kW
-            xu=np.array([100, 7000]), # Upper bound for both
+            xl=np.array([56.5, 2300, 70]), # Lower bound for both (Let R be first var) P_R in kW
+            xu=np.array([100, 7000, 200]), # Upper bound for both
             **kwargs # Allows passing elementwise runner here
         )
         
     # Method for evaluation
     def _evaluate(self, x, out, *args, **kwargs):
         # Evaluate as single objective w cost of energy
-        R, P_r = x
-        Hm = turbine.calc_height(R)
+        R, P_r, Hm = x
         AEP = turbine.annual_energy_production(P_r, Hm, A, B, C, D, G) # Leave drive train as standard
-        cost = turbine.calculate_cost(R, P_r*1000, Hm, AEP) # Leave fix charged rate as standard (P_r in W)
+        cost = turbine.calculate_cost(R, P_r*1000, Hm, AEP*1000) # Leave fix charged rate as standard (P_r, AEP in W)
         f1 = turbine.costOfEnergy(cost, AEP) # In USD/kWh
 
         
@@ -111,9 +111,9 @@ algorithm = DE(
 #
 # Termination
 #
-# Checks every 5 generations if there's been % improvement in the last 20, terminate if not
+# Checks every 5 generations if there's been 0.25% improvement in the last 20, terminate if not
 termination = RobustTermination(
-    MultiObjectiveSpaceTermination(tol=0.01, n_skip=5),
+    MultiObjectiveSpaceTermination(tol=0.0025, n_skip=5),
     period=20
 )
 
@@ -127,11 +127,12 @@ res = minimize(
     verbose = True # Print progress to the console each generation
 )
 
-R, P_r = res.X
+R, P_r, Hm = res.X
 CostOfEnergy = res.F
 PowerAboveReated = -res.G
 
 print(f"Best Radius: {R}")
 print(f"Best Rated Power: {P_r} kW")
+print(f"Hub Height: {Hm}")
 print(f"Cost of Energy: {CostOfEnergy} USD/kWh")
 print(f"Power Above Rated: {PowerAboveReated}")

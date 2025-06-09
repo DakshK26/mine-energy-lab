@@ -16,7 +16,6 @@ from multiprocessing.pool import ThreadPool
 
 '''
 Adjust model to account for radius aswell. Higher radius will generate increased power at lower wind speeds even for the same power rating
-
 '''
 
 # Constans and file processing
@@ -31,6 +30,13 @@ file_names = [
     "4MW_nrel.csv",
     "5.5MW_nrel.csv",
     "7MW_nrel.csv"
+]
+
+radius = [
+    56.5,
+    75,
+    87.5,
+    100
 ]
 
 # We'll store:

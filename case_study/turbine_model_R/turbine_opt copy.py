@@ -31,25 +31,6 @@ Power function is in kw
 Cost of diesel comparison
 '''
 
-# Get rated power curve data 
-def get_power_parm():
-    # Get the directory where this Python file resides
-    this_dir = os.path.dirname(os.path.realpath(__file__))
-    # Build an absolute path to power_parm.json
-    path = os.path.join(this_dir, "power_parm.json")
-
-    with open(path, "r") as f:
-        params = file.load(f)
-
-    a = params["a"]
-    b = params["b"]
-    c = params["c"]
-    d = params["d"]
-    g = params["g"]
-    return a, b, c, d, g
-
-A, B, C, D, G = get_power_parm()
-
 #
 # Element wise problem definition
 #
@@ -71,13 +52,13 @@ class TurbineModel(ElementwiseProblem):
     def _evaluate(self, x, out, *args, **kwargs):
         # Evaluate as single objective w cost of energy
         R, P_r, Hm = x
-        AEP = turbine.annual_energy_production(P_r, Hm, A, B, C, D, G) # Leave drive train as standard
-        cost = turbine.calculate_cost(R, P_r*1000, Hm, AEP) # Leave fix charged rate as standard (P_r in W)
+        AEP = turbine.annual_energy_production(P_r, R, Hm) # Leave drive train as standard
+        cost = turbine.calculate_cost(R, P_r*1000, Hm, AEP*1000) # Leave fix charged rate as standard (P_r in W)
         f1 = turbine.costOfEnergy(cost, AEP) # In USD/kWh
 
         
         # Find value of constraints (PyMoo makes them <= 0, make -ve to make it > 0)
-        C_p = turbine.calc_cp(P_r/1000) # Takes mW input
+        C_p = turbine.calc_cp(turbine.V_RATED, P_r) # Takes kW input
         # Constraint to make sure that at V_rated, the turbine would actually be capable of producing the rated power, meaning
         # calculated power - P_r, if that's >= 0, turbine is capable of producing rated power.
         # For pymoo, convert to P_r - calc power
@@ -89,7 +70,7 @@ class TurbineModel(ElementwiseProblem):
         
         
 # Parralelize and make instance of problem
-threads = 8
+threads = 12
 pool = ThreadPool(threads) 
 runner = StarmapParallelization(pool.starmap)
 
@@ -136,3 +117,21 @@ print(f"Best Rated Power: {P_r} kW")
 print(f"Hub Height: {Hm}")
 print(f"Cost of Energy: {CostOfEnergy} USD/kWh")
 print(f"Power Above Rated: {PowerAboveReated}")
+
+# Save results
+script_dir = os.path.dirname(os.path.abspath(__file__))
+out_path   = os.path.join(script_dir, "optimized_turbine.json")
+
+results = {
+    "Best Radius (m)"      : R,
+    "Best Rated Power (kW)": float(P_r),
+    "Hub Height (m)"       : Hm,
+    "Cost of Energy (USD/kWh)": float(CostOfEnergy[0])
+}
+
+with open(out_path, "w") as jf:
+    file.dump(results, jf, indent=2)
+
+print(f"\nSaved results to {out_path}")
+
+pool.close() # Close threads
