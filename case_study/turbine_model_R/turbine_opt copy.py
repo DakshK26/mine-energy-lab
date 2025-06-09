@@ -111,12 +111,15 @@ res = minimize(
 R, P_r, Hm = res.X
 CostOfEnergy = res.F
 PowerAboveReated = -res.G
+AEP = turbine.annual_energy_production(P_r, R, Hm)
 
 print(f"Best Radius: {R}")
 print(f"Best Rated Power: {P_r} kW")
 print(f"Hub Height: {Hm}")
 print(f"Cost of Energy: {CostOfEnergy} USD/kWh")
 print(f"Power Above Rated: {PowerAboveReated}")
+print(f"Annual Energy Production: {AEP}")
+print(f"Annual Cost: {turbine.calculate_cost(R, P_r*1000, Hm, AEP*1000)}")
 
 # Save results
 script_dir = os.path.dirname(os.path.abspath(__file__))

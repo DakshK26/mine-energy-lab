@@ -5,7 +5,7 @@ import math as m
 from scipy.integrate import quad
 import pandas as pd
 import matplotlib.pyplot as plt
-from numpy.polynomial.chebyshev import chebvander
+from numpy.polynomial.chebyshev import chebval
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1) Settings
@@ -112,6 +112,59 @@ def calculate_cost(R: float, P_r: float, H: float, AEP: float, FCR: float = 0.08
     
     return ICC * FCR + AOE
 
+def calc_ICC(R: float, P_r: float, H: float):
+    '''
+    R: m
+    H: m
+    Rated Power: W
+    '''
+    # Initial Capital Costs
+    # Mechanical system
+    blade = ((0.4019 * R**3 - 955.24 + 2.7445 * R**2.5025) / 0.72) * 3  # 3 blades
+    gearbox = 16.45 * (0.001 * P_r)**1.249
+    low_speed_shaft = 0.1 * (2 * R)**2.887
+    main_bearings = (0.64768 * R / 75 - 0.01068672) * (2 * R)**2.5
+    mechanical_brake = 1.9894e-3 * P_r - 0.1141
+
+    # Electrical system
+    generator = 0.065 * P_r
+    variable_speed_electronics = 0.079 * P_r
+    electrical_connection = 0.04 * P_r
+    
+    # Control system
+    pitch_system = 0.480168 * (2 * R)**2.6578
+    yaw_system = 0.0678 * (2 * R)**2.964
+    control_safety_system = 35000
+
+    # Auxiliary system
+    hydraulic_cooling = 0.012 * P_r
+    hub = 2.0061666 * R**2.53 + 24141.275
+    nose_cone = 206.69 * R - 2899.185
+    mainframe = 11.9173875 * (2 * R)**1.953
+    nacelle_cover = 1.1537e-2 * P_r + 3849.7
+    tower = 0.59595 * m.pi * R**2 * H - 2121
+
+    # Balance of station cost
+    # Infrastructure
+    foundation = 303.24 * (m.pi * R**2 * H)**0.4037
+    roads_civil_work = 2.17e-15 * P_r**3 - 1.45e-8 * P_r**2 + 0.06954 * P_r
+    electrical_interface = 3.49e-15 * P_r**3 - 2.21e-8 * P_r**2 + 0.1097 * P_r
+    engineering_permits = 9.94e-10 * P_r**2 + 0.02031 * P_r
+
+    # Installation and transportation
+    transportation = 1.581e-14 * P_r**3 - 3.75e-8 * P_r**2 + 0.0547 * P_r
+    installation = 1.965 * (2 * H * R)**1.1736
+    
+    # Initial Capital Cost
+    ICC = (blade + gearbox + low_speed_shaft + main_bearings + mechanical_brake +
+       generator + variable_speed_electronics + electrical_connection +
+       pitch_system + yaw_system + control_safety_system +
+       hydraulic_cooling + hub + nose_cone + mainframe + nacelle_cover + tower +
+       foundation + roads_civil_work + electrical_interface + engineering_permits +
+       transportation + installation)
+    
+    return ICC
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 5) Chebyshev Cp model coefficients
 # ──────────────────────────────────────────────────────────────────────────────
@@ -132,22 +185,39 @@ B = np.array([
     -6.725669579887082e-09
 ])
 
+# Precompute these once
+_CHEB_COEFF_BASE = A  # your A array
+_CHEB_COEFF_P      = B  # your B array
+_SCALE_NUM   = 2.0
+_SCALE_DEN   = (V_RATED - V_CUT_IN)
+
 def _scale_to_cheb(v):
-    """Map v in [V_CUT_IN, V_RATED] → x in [-1,1]."""
-    return 2 * (v - V_CUT_IN) / (V_RATED - V_CUT_IN) - 1
+    # inline the constant math
+    return _SCALE_NUM * (v - V_CUT_IN) / _SCALE_DEN - 1.0
 
 def calc_cp(v, Pr):
     """
-    Predict Cp for wind speed v [m/s] and rated power Pr [kW].
-    Accepts scalar or array inputs.
+    Fast Cheb‐based Cp:
+      - v:  array of speeds
+      - Pr: scalar or array of same shape as v
     """
-    v_arr, Pr_arr = np.asarray(v, float), np.asarray(Pr, float)
-    v_flat, Pr_flat = v_arr.ravel(), Pr_arr.ravel()
-    x = _scale_to_cheb(v_flat)
-    T = chebvander(x, len(A)-1)            # shape (N,16)
-    coefs = A[None,:] + B[None,:] * Pr_flat[:,None]
-    cp_flat = np.sum(T * coefs, axis=1)
-    return cp_flat.reshape(v_arr.shape)
+    v = np.asarray(v, float)
+    x = _scale_to_cheb(v)
+
+    # If Pr is a single number, we get a single set of coeffs:
+    if np.isscalar(Pr):
+        coeffs = _CHEB_COEFF_BASE + _CHEB_COEFF_P * Pr
+        return chebval(x, coeffs)
+
+    # Otherwise Pr is an array → we need to evaluate pointwise:
+    Pr = np.asarray(Pr, float)
+    out = np.empty_like(x)
+    # chebval is fast, so a tiny Python loop is okay
+    for i in range(x.size):
+        c = _CHEB_COEFF_BASE + _CHEB_COEFF_P * Pr.ravel()[i]
+        out.ravel()[i] = chebval(x.ravel()[i], c)
+
+    return out.reshape(v.shape)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 6) Mechanical power
@@ -276,3 +346,6 @@ if __name__ == "__main__":
     
     # Cp at 5500 P_r and 9.75 rated
     print(f"Cp: {calc_cp(V_RATED, P_r_kw)}")
+    
+    # Print ICC:
+    print(f"Initial Capital Cost: {calc_ICC(R_radius, P_r_kw*1000, H_hub)}")
