@@ -43,7 +43,7 @@ class TurbineModel(ElementwiseProblem):
             n_obj = 1, # Number of objs
             n_ieq_constr = 1, # Number of inequality constraints
             n_eq_constr = 0, # Number of equality constraints
-            xl=np.array([56.5, 2300, 70]), # Lower bound for both (Let R be first var) P_R in kW
+            xl=np.array([56.5, 2300, 70]), # Lower bound for both (Let R be first var) P_R in kW, Hm in m
             xu=np.array([100, 7000, 200]), # Upper bound for both
             **kwargs # Allows passing elementwise runner here
         )

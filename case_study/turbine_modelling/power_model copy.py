@@ -158,7 +158,7 @@ print(f"\nMean Power RMSE across all datasets: {mean_rmse_power:.4f} kW")
 
 plt.xlabel("Wind Speed (m/s)")
 plt.ylabel("Power (kW)")
-plt.title("Measured vs. Chebyshev‐Model Mechanical Power")
+plt.title("Measured vs. Model Mechanical Power")
 plt.legend(loc="upper left", fontsize="small", ncol=2)
 plt.grid(True)
 plt.tight_layout()

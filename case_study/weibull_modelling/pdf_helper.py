@@ -2,16 +2,18 @@ import pandas as pd
 import numpy as np
 import click as ui
 
+# Function to convert all windspeed entries from file into an array
 def speedsAsArray(month: str):
     df = pd.read_csv(f"case_study/weibull_modelling/months_data/{month}.csv")
     speeds_kmh = df['Wind Spd (km/h)'].dropna().to_numpy() # Drop all empty entries and get wind speeds
     speeds_ms = speeds_kmh / 3.6
     return speeds_ms
 
-# Find most realistic max wind speed using 
+# Find most realistic max wind speed using (Not used anymore)
 def v_max_solver(k, c):
     return c * ((-np.log(9.99999999e-8))**(1.0/k))
 
+# Self testing main
 if __name__ == "__main__":
     month = ui.prompt("Month: ")
     speeds_ms = speedsAsArray(month)

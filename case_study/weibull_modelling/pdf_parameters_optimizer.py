@@ -26,6 +26,7 @@ import pdf_helper as helper
 '''
 Following general layout from: https://www.nature.com/articles/s41598-025-90583-2#Sec2 to find k and c 
 Aim for RMSE around 0.015 or lower: https://www.sciencedirect.com/science/article/pii/S2352484721010969
+Current data is 2024, add 2021 -> 2023 data aswell for more accurace
 '''
 
 # RMSE Calculator
