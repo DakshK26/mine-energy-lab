@@ -7,52 +7,52 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from numpy.polynomial.chebyshev import chebval
 
-# Replace with accurate fixed charge rate
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 1) Settings
-# ──────────────────────────────────────────────────────────────────────────────
+'''
+Weibull Calculations
+'''
+# Global Variables
 V_CUT_IN, V_RATED, V_CUT_OUT = 3.25, 9.75, 25.0
 H0 = 82.9  # m (height where Weibull was originally measured)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 2) Weibull functions
-# ──────────────────────────────────────────────────────────────────────────────
-def weibull_pdf(k: float, c: float, v: np.ndarray) -> np.ndarray:
+# Weibull functios
+def weibull_pdf(k: float, c: float, v: np.ndarray) -> np.ndarray: # PDF
     v = np.asarray(v)
     return (k / c**k) * v**(k - 1) * np.exp(- (v / c)**k)
 
-def weibull_cdf_scalar(k: float, c: float, v: float) -> float:
+def weibull_cdf_scalar(k: float, c: float, v: float) -> float: # CDF
     return 1.0 - m.exp(- (v / c)**k)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 3) Height & density adjustments
-# ──────────────────────────────────────────────────────────────────────────────
+# Function to calc height from emperical relation (unused, optimizing for ideal height now)
 def calc_height(R: float) -> float:
     """Empirical hub height from rotor radius R (m)."""
     return 2.7936 * (2 * R)**0.7663
 
+# Function to find shear coefficient 
 def shear_coefficient(c0: float, h0: float) -> float:
     num   = 0.37 - 0.0881 * m.log(c0)
     denom = 1 - 0.0881 * m.log(h0 / 10.0)
     return num / denom
 
+# Function to compute scale factor
 def compute_c(H: float, c0: float, H0: float, alpha: float) -> float:
     return c0 * (H / H0)**alpha
 
+# Function to compute shape factor
 def compute_k(H: float, k0: float, H0: float) -> float:
     num   = 1 - 0.0881 * k0 * m.log(H0 / 10.0)
     denom = 1 - 0.0881 * m.log(H / 10.0)
     return k0 * (num / denom)
 
+# Adjust density for height
 def density_adj(Hm: float) -> float:
-    """Relative density at height Hm (m)."""
     return m.exp(-0.297 / 3048 * Hm)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 4) Capital & O&M cost
-# ──────────────────────────────────────────────────────────────────────────────
-# Taken from Tables 1 & 2 of Section ...
+'''
+Cost Model
+'''
+# Calculate cost
+# Taken from Tables 1 & 2 of Section 3.4.1
 def calculate_cost(R: float, P_r: float, H: float, AEP: float, FCR: float = 0.08):
     '''
     R: m
@@ -114,6 +114,7 @@ def calculate_cost(R: float, P_r: float, H: float, AEP: float, FCR: float = 0.08
     
     return ICC * FCR + AOE
 
+# Function for initial capital costs
 def calc_ICC(R: float, P_r: float, H: float):
     '''
     R: m
@@ -167,9 +168,9 @@ def calc_ICC(R: float, P_r: float, H: float):
     
     return ICC
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 5) Chebyshev Cp model coefficients
-# ──────────────────────────────────────────────────────────────────────────────
+'''
+Chebyshev Calculations
+'''
 A = np.array([
     0.36331072494448835, 0.06160623375655268, -0.03009958339557637,
     0.013482428928696819, -0.004704316035470147, 0.002197646498117906,
@@ -197,41 +198,43 @@ def _scale_to_cheb(v):
     # inline the constant math
     return _SCALE_NUM * (v - V_CUT_IN) / _SCALE_DEN - 1.0
 
+# Calculate C_p
 def calc_cp(v, Pr):
     """
-    Fast Cheb‐based Cp:
-      - v:  array of speeds
-      - Pr: scalar or array of same shape as v
+    Cp:
+      - v:  array of speeds (m/s)
+      - Pr: scalar or array of same shape as v (kW)
     """
     v = np.asarray(v, float)
-    x = _scale_to_cheb(v)
+    x = _scale_to_cheb(v) # Map speeds to [-1, 1]
 
-    # If Pr is a single number, we get a single set of coeffs:
+    # If Pr is a single number, we get a single set of coeffs
     if np.isscalar(Pr):
         coeffs = _CHEB_COEFF_BASE + _CHEB_COEFF_P * Pr
-        return chebval(x, coeffs)
+        return chebval(x, coeffs) # Calculates the entire series at x (so Cn*Tn(x)) where Cn are the constants to multiply each degree chebyshev T with
 
     # Otherwise Pr is an array → we need to evaluate pointwise:
     Pr = np.asarray(Pr, float)
-    out = np.empty_like(x)
-    # chebval is fast, so a tiny Python loop is okay
+    out = np.empty_like(x) # Empty array same length as x
+    # Loop through all elements in x
     for i in range(x.size):
-        c = _CHEB_COEFF_BASE + _CHEB_COEFF_P * Pr.ravel()[i]
+        c = _CHEB_COEFF_BASE + _CHEB_COEFF_P * Pr.ravel()[i] # Compute coefficients 
         out.ravel()[i] = chebval(x.ravel()[i], c)
 
     return out.reshape(v.shape)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 6) Mechanical power
-# ──────────────────────────────────────────────────────────────────────────────
+'''
+Mechanical power
+'''
 def calc_power_mech(R: float, V: float, Cp: float, rho0: float = 1.225) -> float:
     """Return mechanical power in Watts."""
     area = m.pi * R**2
     return 0.5 * rho0 * area * V**3 * Cp
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 7) Monthly energy output
-# ──────────────────────────────────────────────────────────────────────────────
+'''
+Monthly & Yearly Power
+'''
+# Monthly power output
 def monthly_power_output_elec(P_r_kw: float,
                               R: float,
                               k: float,
@@ -241,23 +244,24 @@ def monthly_power_output_elec(P_r_kw: float,
                               n_drivetrain: float = 0.95) -> float:
     """
     Compute monthly electrical energy (kWh) given Weibull(k,c0),
-    rotor radius R, rated power P_r_kw, hours in month, hub height Hm.
+    rotor radius R (m), rated power P_r_kw (kW), hours in month, hub height Hm (m).
     """
+    # Integrate term 1 (Region 2)
     def integrand(v):
         Cp   = calc_cp(v, P_r_kw)
         Pm_W = calc_power_mech(R, v, Cp)
         return (Pm_W / 1000.0) * weibull_pdf(k, c0, v)
 
     term1, _ = quad(integrand, V_CUT_IN, V_RATED)
-    int2 = weibull_cdf_scalar(k, c0, V_CUT_OUT) - weibull_cdf_scalar(k, c0, V_RATED)
+    # Integrate term 2 (Region 3)
+    int2 = weibull_cdf_scalar(k, c0, V_CUT_OUT) - weibull_cdf_scalar(k, c0, V_RATED) # CDF is integral of PDF, with P as a constant function, perfect integral is taken
     term2 = P_r_kw * int2
+    # Calculate and return monthly energy
     P_avg = term1 + term2
     P_elec = P_avg * n_drivetrain * density_adj(Hm)
     return P_elec * n_hours
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 8) Annual energy production
-# ──────────────────────────────────────────────────────────────────────────────
+# Constants for annual
 _MONTHLY_WEIBULL = {
     "January":   (1.730295873640355, 4.19357482410424),
     "February":  (1.5539947341238698, 4.263972641371435),
@@ -301,9 +305,9 @@ def costOfEnergy(cost, AEP):
     '''
     return cost/AEP
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 9) Self-test
-# ──────────────────────────────────────────────────────────────────────────────
+'''
+Self-testing Main
+'''
 if __name__ == "__main__":
     # Turbine spec
     R_rotor   = 175.0        # rotor diameter [m]
