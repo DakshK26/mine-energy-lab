@@ -6,6 +6,7 @@ from scipy.integrate import quad
 import pandas as pd
 import matplotlib.pyplot as plt
 from numpy.polynomial.chebyshev import chebval
+from numba import njit 
 
 
 '''
@@ -16,10 +17,12 @@ V_CUT_IN, V_RATED, V_CUT_OUT = 3.25, 9.75, 25.0
 H0 = 82.9  # m (height where Weibull was originally measured)
 
 # Weibull functios
+@njit
 def weibull_pdf(k: float, c: float, v: np.ndarray) -> np.ndarray: # PDF
     v = np.asarray(v)
     return (k / c**k) * v**(k - 1) * np.exp(- (v / c)**k)
 
+@njit
 def weibull_cdf_scalar(k: float, c: float, v: float) -> float: # CDF
     return 1.0 - m.exp(- (v / c)**k)
 
@@ -29,16 +32,19 @@ def calc_height(R: float) -> float:
     return 2.7936 * (2 * R)**0.7663
 
 # Function to find shear coefficient 
+@njit
 def shear_coefficient(c0: float, h0: float) -> float:
     num   = 0.37 - 0.0881 * m.log(c0)
     denom = 1 - 0.0881 * m.log(h0 / 10.0)
     return num / denom
 
 # Function to compute scale factor
+@njit
 def compute_c(H: float, c0: float, H0: float, alpha: float) -> float:
     return c0 * (H / H0)**alpha
 
 # Function to compute shape factor
+@njit
 def compute_k(H: float, k0: float, H0: float) -> float:
     num   = 1 - 0.0881 * k0 * m.log(H0 / 10.0)
     denom = 1 - 0.0881 * m.log(H / 10.0)
@@ -53,6 +59,7 @@ Cost Model
 '''
 # Calculate cost
 # Taken from Tables 1 & 2 of Section 3.4.1
+@njit # Translates python functions to industry-standard LLVM compiler, speeds up python to the speed of c/fortran
 def calculate_cost(R: float, P_r: float, H: float, AEP: float, FCR: float = 0.08):
     '''
     R: m
@@ -234,6 +241,17 @@ def calc_power_mech(R: float, V: float, Cp: float, rho0: float = 1.225) -> float
 '''
 Monthly & Yearly Power
 '''
+# Integrand helper (not used, but is much faster then quad integration at the trade off of slight accuracy)
+# However, that extra time is not worth losing any accuracy at the moment
+def integrate_trapz(P_r_kw, R, k, c0, n=500):
+    v = np.linspace(V_CUT_IN, V_RATED, n)
+    # vectorized integrand:
+    Cp    = calc_cp(v, P_r_kw)                  # NumPy‐vectorized
+    Pm    = 0.5 * 1.225 * np.pi * R**2 * v**3 * Cp
+    pdf   = weibull_pdf(k, c0, v)
+    f     = (Pm/1000.0) * pdf
+    return np.trapezoid(f, v)
+
 # Monthly power output
 def monthly_power_output_elec(P_r_kw: float,
                               R: float,
@@ -253,6 +271,8 @@ def monthly_power_output_elec(P_r_kw: float,
         return (Pm_W / 1000.0) * weibull_pdf(k, c0, v)
 
     term1, _ = quad(integrand, V_CUT_IN, V_RATED)
+    # Use for faster speed:
+    # term1 = integrate_trapz(P_r_kw, R, k, c0)
     # Integrate term 2 (Region 3)
     int2 = weibull_cdf_scalar(k, c0, V_CUT_OUT) - weibull_cdf_scalar(k, c0, V_RATED) # CDF is integral of PDF, with P as a constant function, perfect integral is taken
     term2 = P_r_kw * int2
